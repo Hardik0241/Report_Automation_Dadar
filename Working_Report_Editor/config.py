@@ -24,7 +24,7 @@ if creds_json:
 # ⚠️ UPDATE THIS LIST WITH BRANCH-SPECIFIC EMPLOYEES
 SALES_EMPLOYEES = [
     "Sanskruti","Naved","Krishna","Abhinav","Rohit",
-    "Fahad","Sarvesh","Shrushti","Jay","Imzamum",
+    "Fahad","Sarvesh","Shrushti","Imzamum",
 ]
 
 
@@ -35,13 +35,12 @@ SALES_EMPLOYEES = [
 SALES_EMAIL_MAP = {
     "sanskruti.edujam@gmail.com": "Sanskruti",
     "naveds.edujam@gmail.com": "Naved",
-    "": "Krishna",
+    "krishna.edujam@gmail.com": "Krishna",
     "abhinav.edujam@gmail.com": "Abhinav",
     "rohitg.edujam@gmail.com": "Rohit",
     "fahadk.edujam@gmail.com": "Fahad",
     "sarvesh.edujam@gmail.com": "Sarvesh",
     "shrushtir.edujam@gmail.com": "Shrushti",
-    "jays.edujam@gmail.com": "Jay",
     "imzamium.edujam@gmail.com": "Imzamum",
     
 }
