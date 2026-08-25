@@ -37,27 +37,44 @@ This automation system:
 
 Report_Automation_Dadar/
 ├── .github/
+
 │ └── workflows/
+
 │ └── scheduler.yml ← GitHub Actions schedule
+
 ├── Working_Report_Editor/
+
 │ ├── config.py ← Branch configuration (employees, emails)
+
 │ ├── config.yaml ← Model configuration
+
 │ ├── error_handler.py ← Error handling & retry logic
+
 │ ├── gemini_parser.py ← Email body parser (Gemini + regex)
+
 │ ├── gmail_reader.py ← Gmail email fetcher (OAuth)
+
 │ ├── main.py ← Main orchestrator
+
 │ ├── requirements.txt ← Python dependencies
+
 │ ├── runtime.txt ← Python version
+
 │ ├── sheets_service.py ← Google Sheets writer
+
 │ ├── tracker.py ← Duplicate detection & logging
+
 │ ├── utils.py ← Helper functions
+
 │ ├── validator.py ← Data validation
+
 │ └── vision_parser.py ← Screenshot parser
+
 ├── .gitignore ← Git ignore rules
+
 ├── .python-version ← Python version
+
 └── README.md ← Documentation
-
-
 
 
 ## 👥 Employee List
