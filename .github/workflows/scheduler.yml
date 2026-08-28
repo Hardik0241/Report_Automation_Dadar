@@ -5,21 +5,16 @@ env:
 
 on:
   schedule:
-    # UPDATED: Active window 3:00 PM to 09:00 PM IST (Monday to Saturday)
-    # UTC is 5 hours 30 minutes behind IST
-    # IST 3:00 PM = UTC 09:30
-    # IST 8:30 PM = UTC 15:00
-    # IST 9:00 PM = UTC 15:30 (FINAL RUN AT DEADLINE)
-    # Days: 1-6 = Monday to Saturday
-    - cron: '0,30 9-14 * * 1-6'   # Every 30 min from 3:00 PM to 8:30 PM IST
-    - cron: '30 15 * * 1-6'       # FINAL RUN at 9:00 PM IST - DEADLINE
+    # Runs at 0 and 30 minutes past each hour from 3:00 PM to 8:30 PM IST (Mon-Sat)
+    # IST 3:00 PM = UTC 09:30, IST 8:30 PM = UTC 15:00
+    # Hours 9-14 UTC cover: 3:00 PM to 8:30 PM IST
+    - cron: '0,30 9-14 * * 1-6'
+    
+    # Final run at 9:00 PM IST (deadline)
+    # IST 9:00 PM = UTC 15:30
+    - cron: '30 15 * * 1-6'
+
   workflow_dispatch:
-    inputs:
-      force_date:
-        description: 'Process emails for a specific date (dd-mm-yyyy). Leave empty for today.'
-        required: false
-        type: string
-        default: ''
 
 jobs:
   run-processor:
@@ -63,7 +58,6 @@ jobs:
           DADAR_CLIENT_ID: ${{ secrets.DADAR_CLIENT_ID }}
           DADAR_CLIENT_SECRET: ${{ secrets.DADAR_CLIENT_SECRET }}
           DADAR_REFRESH_TOKEN: ${{ secrets.DADAR_REFRESH_TOKEN }}
-          FORCE_DATE: ${{ github.event.inputs.force_date }}
 
       - name: Debug - Check if logs file exists
         run: |
