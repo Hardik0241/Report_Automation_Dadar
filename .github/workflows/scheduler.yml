@@ -15,6 +15,14 @@ on:
     - cron: '30 15 * * 1-6'
 
   workflow_dispatch:
+    # Allow manual trigger with optional date input
+    inputs:
+      force_date:
+        description: 'Process emails for a specific date (dd-mm-yyyy). Leave empty for today.'
+        required: false
+        type: string
+        default: ''
+        placeholder: 'e.g., 31-08-2026'
 
 jobs:
   run-processor:
@@ -58,6 +66,8 @@ jobs:
           DADAR_CLIENT_ID: ${{ secrets.DADAR_CLIENT_ID }}
           DADAR_CLIENT_SECRET: ${{ secrets.DADAR_CLIENT_SECRET }}
           DADAR_REFRESH_TOKEN: ${{ secrets.DADAR_REFRESH_TOKEN }}
+          # Pass the manual input (if set) as FORCE_DATE
+          FORCE_DATE: ${{ github.event.inputs.force_date }}
 
       - name: Debug - Check if logs file exists
         run: |
