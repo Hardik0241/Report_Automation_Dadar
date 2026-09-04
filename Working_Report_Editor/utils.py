@@ -10,6 +10,7 @@ UPDATED: Added support for "min" as minutes identifier (e.g., 1hr 25min 46s)
 UPDATED: Added support for "MINS" and "SEC" uppercase full words (e.g., 49 MINS 9 SEC)
 UPDATED: Added support for "hr" and "min" and "sec" full words (e.g., 1hr 9min 47sec)
 UPDATED: Fixed duration parsing for addition patterns like "+7 minutes", "+10 min", "also add 10 min"
+UPDATED: Added support for "m" and "s" without spaces (e.g., 48m 14s) - handles minutes+seconds format
 """
 
 import re
@@ -89,6 +90,7 @@ def parse_duration(raw: str) -> str:
     - "1hr 9min 47sec" → 01:09:47 (full words with spaces)
     - "58:14" → 00:58:14 (MM:SS format)
     - "1H 1M + 20 M, Also add 10 min" → 01:31:00
+    - "48m 14s + 8m 21s" → 00:56:35 (minutes+seconds with addition)
     """
     if not raw:
         return "00:00:00"
@@ -167,6 +169,10 @@ def _duration_to_seconds(duration_str: str) -> int:
     # Remove any text in parentheses or after keywords
     duration_str = re.sub(r'\s+(?:on|from|another|whatsapp|other|phone|personal|prsnl).*$', '', duration_str, flags=re.IGNORECASE)
     
+    # ============================================================
+    # PRIORITY 1: FULL DURATION PATTERNS (HOURS + MINUTES + SECONDS)
+    # ============================================================
+    
     # Handle "1hr 9min 47sec" format (full words with spaces)
     match = re.search(r'(\d+)\s*hr\s*(\d+)\s*min\s*(\d+)\s*sec', duration_str, re.IGNORECASE)
     if match:
@@ -174,7 +180,103 @@ def _duration_to_seconds(duration_str: str) -> int:
         total_seconds += h * 3600 + m * 60 + s
         return total_seconds
     
-    # Handle addition patterns with + symbol
+    # Handle "1hr 25min 46s" format
+    match = re.search(r'(\d+)\s*hr\s*(\d+)\s*min\s*(\d+)\s*s', duration_str, re.IGNORECASE)
+    if match:
+        h, m, s = int(match.group(1)), int(match.group(2)), int(match.group(3))
+        total_seconds += h * 3600 + m * 60 + s
+        return total_seconds
+    
+    # Parse main duration - text formats (standard s for seconds)
+    match = re.search(r'(\d+)\s*h(?:r)?s?\s*(\d+)\s*m(?:in)?s?\s*(\d+)\s*s(?:ec)?s?', duration_str, re.IGNORECASE)
+    if match:
+        h, m, s = int(match.group(1)), int(match.group(2)), int(match.group(3))
+        total_seconds += h * 3600 + m * 60 + s
+        return total_seconds
+    
+    # Handle duration with "sec" as seconds identifier (e.g., 1h 42m 8sec)
+    match = re.search(r'(\d+)\s*h(?:r)?s?\s*(\d+)\s*m(?:in)?s?\s*(\d+)\s*sec', duration_str, re.IGNORECASE)
+    if match:
+        h, m, s = int(match.group(1)), int(match.group(2)), int(match.group(3))
+        total_seconds += h * 3600 + m * 60 + s
+        return total_seconds
+    
+    # Handle duration with "min" as minutes identifier (e.g., 1hr 25min 46s)
+    match = re.search(r'(\d+)\s*hr\s*(\d+)\s*min\s*(\d+)\s*s', duration_str, re.IGNORECASE)
+    if match:
+        h, m, s = int(match.group(1)), int(match.group(2)), int(match.group(3))
+        total_seconds += h * 3600 + m * 60 + s
+        return total_seconds
+    
+    # ============================================================
+    # PRIORITY 2: MINUTES + SECONDS (NO HOURS)
+    # These must be checked BEFORE just-seconds patterns
+    # ============================================================
+    
+    # Handle "48m 14s" format (minutes + seconds with 'm' and 's')
+    match = re.search(r'(\d+)\s*m\s*(\d+)\s*s', duration_str, re.IGNORECASE)
+    if match:
+        m, s = int(match.group(1)), int(match.group(2))
+        total_seconds += m * 60 + s
+        return total_seconds
+    
+    # Handle "48min 14s" format (minutes + seconds with 'min' and 's')
+    match = re.search(r'(\d+)\s*min\s*(\d+)\s*s', duration_str, re.IGNORECASE)
+    if match:
+        m, s = int(match.group(1)), int(match.group(2))
+        total_seconds += m * 60 + s
+        return total_seconds
+    
+    # Handle "48m 14sec" format (minutes + seconds with 'm' and 'sec')
+    match = re.search(r'(\d+)\s*m\s*(\d+)\s*sec', duration_str, re.IGNORECASE)
+    if match:
+        m, s = int(match.group(1)), int(match.group(2))
+        total_seconds += m * 60 + s
+        return total_seconds
+    
+    # Handle "48min 14sec" format (minutes + seconds with 'min' and 'sec')
+    match = re.search(r'(\d+)\s*min\s*(\d+)\s*sec', duration_str, re.IGNORECASE)
+    if match:
+        m, s = int(match.group(1)), int(match.group(2))
+        total_seconds += m * 60 + s
+        return total_seconds
+    
+    # Handle "48m14s" format (no spaces between components)
+    match = re.search(r'(\d+)m(\d+)s', duration_str, re.IGNORECASE)
+    if match:
+        m, s = int(match.group(1)), int(match.group(2))
+        total_seconds += m * 60 + s
+        return total_seconds
+    
+    # Pattern for "Ymin Zs" (no hours)
+    match = re.search(r'(\d+)\s*min\s*(\d+)\s*s', duration_str, re.IGNORECASE)
+    if match:
+        m, s = int(match.group(1)), int(match.group(2))
+        total_seconds += m * 60 + s
+        return total_seconds
+    
+    # ============================================================
+    # PRIORITY 3: HOURS + MINUTES (NO SECONDS)
+    # ============================================================
+    
+    match = re.search(r'(\d+)\s*h(?:r)?s?\s*(\d+)\s*m(?:in)?s?', duration_str, re.IGNORECASE)
+    if match:
+        h, m = int(match.group(1)), int(match.group(2))
+        total_seconds += h * 3600 + m * 60
+        return total_seconds
+    
+    match = re.search(r'(\d+)\s*[hH]\s*(\d+)\s*[mM]', duration_str)
+    if match:
+        h, m = int(match.group(1)), int(match.group(2))
+        total_seconds += h * 3600 + m * 60
+        return total_seconds
+    
+    # ============================================================
+    # PRIORITY 4: SINGLE UNIT (MINUTES ONLY OR SECONDS ONLY)
+    # These are checked LAST to avoid catching partial durations
+    # ============================================================
+    
+    # Handle addition patterns with + symbol (including mins plural)
     addition_match = re.search(r'\+\s*(\d+)\s*(?:min(?:ute)?s?)', duration_str, re.IGNORECASE)
     if addition_match:
         extra_minutes = int(addition_match.group(1))
@@ -199,6 +301,101 @@ def _duration_to_seconds(duration_str: str) -> int:
         extra_minutes = int(text_addition.group(1))
         total_seconds += extra_minutes * 60
         duration_str = re.sub(r'(?:also add|add|plus|additional)\s+\d+\s*(?:min(?:ute)?s?)', '', duration_str, flags=re.IGNORECASE)
+    
+    # Handle "39min" only (no seconds)
+    match = re.search(r'(\d+)\s*min', duration_str, re.IGNORECASE)
+    if match:
+        total_seconds += int(match.group(1)) * 60
+        return total_seconds
+    
+    # Handle "Y mins" (only minutes, plural)
+    match = re.search(r'(\d+)\s*mins?', duration_str, re.IGNORECASE)
+    if match:
+        total_seconds += int(match.group(1)) * 60
+        return total_seconds
+    
+    # Handle "51s" only (no minutes)
+    match = re.search(r'(\d+)\s*s', duration_str, re.IGNORECASE)
+    if match:
+        total_seconds += int(match.group(1))
+        return total_seconds
+    
+    # Handle just "Zsec" (only seconds)
+    match = re.search(r'(\d+)\s*sec', duration_str, re.IGNORECASE)
+    if match:
+        total_seconds += int(match.group(1))
+        return total_seconds
+    
+    # Handle just "Z secs" (only seconds, plural)
+    match = re.search(r'(\d+)\s*secs?', duration_str, re.IGNORECASE)
+    if match:
+        total_seconds += int(match.group(1))
+        return total_seconds
+    
+    # Handle hours only
+    match = re.search(r'(\d+)\s*h(?:r)?s?', duration_str, re.IGNORECASE)
+    if match:
+        total_seconds += int(match.group(1)) * 3600
+        return total_seconds
+    
+    # Handle minutes only (after seconds check)
+    match = re.search(r'(\d+)\s*m(?:in)?s?', duration_str, re.IGNORECASE)
+    if match:
+        total_seconds += int(match.group(1)) * 60
+        return total_seconds
+    
+    # ============================================================
+    # PRIORITY 5: COLON FORMATS (HH:MM:SS, HH:MM, MM:SS)
+    # ============================================================
+    
+    # Handle HH:MM:SS format with colons
+    match = re.search(r'(\d{2}):(\d{2}):(\d{2})', duration_str)
+    if match:
+        h, m, s = int(match.group(1)), int(match.group(2)), int(match.group(3))
+        total_seconds += h * 3600 + m * 60 + s
+        return total_seconds
+    
+    # Handle HH:MM format with colons
+    match = re.search(r'(\d{2}):(\d{2})', duration_str)
+    if match:
+        h, m = int(match.group(1)), int(match.group(2))
+        total_seconds += h * 3600 + m * 60
+        return total_seconds
+    
+    # Handle MM:SS format
+    match = re.search(r'(\d{2}):(\d{2})', duration_str)
+    if match:
+        m, s = int(match.group(1)), int(match.group(2))
+        total_seconds += m * 60 + s
+        return total_seconds
+    
+    # ============================================================
+    # PRIORITY 6: UPPERCASE FULL WORDS (MINS, SEC)
+    # ============================================================
+    
+    # Handle "49 MINS 9 SEC" format (uppercase full words)
+    # Pattern for "X MINS Y SEC"
+    match = re.search(r'(\d+)\s*MINS?\s*(\d+)\s*SEC', duration_str, re.IGNORECASE)
+    if match:
+        m, s = int(match.group(1)), int(match.group(2))
+        total_seconds += m * 60 + s
+        return total_seconds
+    
+    # Pattern for "X MINS" only (no seconds)
+    match = re.search(r'(\d+)\s*MINS?', duration_str, re.IGNORECASE)
+    if match:
+        total_seconds += int(match.group(1)) * 60
+        return total_seconds
+    
+    # Pattern for "X SEC" only (no minutes)
+    match = re.search(r'(\d+)\s*SEC', duration_str, re.IGNORECASE)
+    if match:
+        total_seconds += int(match.group(1))
+        return total_seconds
+    
+    # ============================================================
+    # PRIORITY 7: DOT FORMATS (HH.MM.SS, H.MM.SS)
+    # ============================================================
     
     # Handle HH.MM.SS format with dots (two-digit hour)
     match = re.search(r'(\d{2})\.(\d{2})\.(\d{2})', duration_str)
@@ -225,124 +422,8 @@ def _duration_to_seconds(duration_str: str) -> int:
         total_seconds += h * 3600 + m * 60 + s
         return total_seconds
     
-    # Handle "49 MINS 9 SEC" format (uppercase full words)
-    # Pattern for "X MINS Y SEC"
-    match = re.search(r'(\d+)\s*MINS?\s*(\d+)\s*SEC', duration_str, re.IGNORECASE)
-    if match:
-        m, s = int(match.group(1)), int(match.group(2))
-        total_seconds += m * 60 + s
-        return total_seconds
-    
-    # Pattern for "X MINS" only (no seconds)
-    match = re.search(r'(\d+)\s*MINS?', duration_str, re.IGNORECASE)
-    if match:
-        total_seconds += int(match.group(1)) * 60
-        return total_seconds
-    
-    # Pattern for "X SEC" only (no minutes)
-    match = re.search(r'(\d+)\s*SEC', duration_str, re.IGNORECASE)
-    if match:
-        total_seconds += int(match.group(1))
-        return total_seconds
-    
-    # Handle duration with "sec" as seconds identifier (e.g., 1h 42m 8sec)
-    # Pattern for "Xh Ym Zsec"
-    match = re.search(r'(\d+)\s*h(?:r)?s?\s*(\d+)\s*m(?:in)?s?\s*(\d+)\s*sec', duration_str, re.IGNORECASE)
-    if match:
-        h, m, s = int(match.group(1)), int(match.group(2)), int(match.group(3))
-        total_seconds += h * 3600 + m * 60 + s
-        return total_seconds
-    
-    # Handle duration with "min" as minutes identifier (e.g., 1hr 25min 46s)
-    # Pattern for "Xhr Ymin Zs"
-    match = re.search(r'(\d+)\s*hr\s*(\d+)\s*min\s*(\d+)\s*s', duration_str, re.IGNORECASE)
-    if match:
-        h, m, s = int(match.group(1)), int(match.group(2)), int(match.group(3))
-        total_seconds += h * 3600 + m * 60 + s
-        return total_seconds
-    
-    # Pattern for "Ymin Zs" (no hours)
-    match = re.search(r'(\d+)\s*min\s*(\d+)\s*s', duration_str, re.IGNORECASE)
-    if match:
-        m, s = int(match.group(1)), int(match.group(2))
-        total_seconds += m * 60 + s
-        return total_seconds
-    
-    # Pattern for just "Zmin" (only minutes)
-    match = re.search(r'(\d+)\s*min', duration_str, re.IGNORECASE)
-    if match:
-        total_seconds += int(match.group(1)) * 60
-        return total_seconds
-    
     # Pattern for "Ym Zsec" (no hours)
     match = re.search(r'(\d+)\s*m(?:in)?s?\s*(\d+)\s*sec', duration_str, re.IGNORECASE)
-    if match:
-        m, s = int(match.group(1)), int(match.group(2))
-        total_seconds += m * 60 + s
-        return total_seconds
-    
-    # Pattern for just "Zsec" (only seconds)
-    match = re.search(r'(\d+)\s*sec', duration_str, re.IGNORECASE)
-    if match:
-        total_seconds += int(match.group(1))
-        return total_seconds
-    
-    # Parse main duration - text formats (standard s for seconds)
-    match = re.search(r'(\d+)\s*h(?:r)?s?\s*(\d+)\s*m(?:in)?s?\s*(\d+)\s*s(?:ec)?s?', duration_str, re.IGNORECASE)
-    if match:
-        h, m, s = int(match.group(1)), int(match.group(2)), int(match.group(3))
-        total_seconds += h * 3600 + m * 60 + s
-        return total_seconds
-    
-    match = re.search(r'(\d+)\s*h(?:r)?s?\s*(\d+)\s*m(?:in)?s?', duration_str, re.IGNORECASE)
-    if match:
-        h, m = int(match.group(1)), int(match.group(2))
-        total_seconds += h * 3600 + m * 60
-        return total_seconds
-    
-    match = re.search(r'(\d+)\s*[hH]\s*(\d+)\s*[mM]', duration_str)
-    if match:
-        h, m = int(match.group(1)), int(match.group(2))
-        total_seconds += h * 3600 + m * 60
-        return total_seconds
-    
-    match = re.search(r'(\d+)\s*h(?:r)?s?', duration_str, re.IGNORECASE)
-    if match:
-        total_seconds += int(match.group(1)) * 3600
-        return total_seconds
-    
-    match = re.search(r'(\d+)\s*m(?:in)?s?\s*(\d+)\s*s(?:ec)?s?', duration_str, re.IGNORECASE)
-    if match:
-        m, s = int(match.group(1)), int(match.group(2))
-        total_seconds += m * 60 + s
-        return total_seconds
-    
-    match = re.search(r'(\d+)\s*m(?:in)?s?', duration_str, re.IGNORECASE)
-    if match:
-        total_seconds += int(match.group(1)) * 60
-        return total_seconds
-    
-    match = re.search(r'(\d+)\s*s(?:ec)?s?', duration_str, re.IGNORECASE)
-    if match:
-        total_seconds += int(match.group(1))
-        return total_seconds
-    
-    # Handle HH:MM:SS format with colons
-    match = re.search(r'(\d{2}):(\d{2}):(\d{2})', duration_str)
-    if match:
-        h, m, s = int(match.group(1)), int(match.group(2)), int(match.group(3))
-        total_seconds += h * 3600 + m * 60 + s
-        return total_seconds
-    
-    # Handle HH:MM format with colons
-    match = re.search(r'(\d{2}):(\d{2})', duration_str)
-    if match:
-        h, m = int(match.group(1)), int(match.group(2))
-        total_seconds += h * 3600 + m * 60
-        return total_seconds
-    
-    # Handle MM:SS format
-    match = re.search(r'(\d{2}):(\d{2})', duration_str)
     if match:
         m, s = int(match.group(1)), int(match.group(2))
         total_seconds += m * 60 + s
